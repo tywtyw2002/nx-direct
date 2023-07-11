@@ -1,0 +1,53 @@
+name: "Build NX Packages"
+on:
+  repository_dispatch:
+  workflow_dispatch:
+permissions:
+  contents: write
+
+jobs:
+  buildNXPkgs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      # - name: Checkout NX Build
+      #   uses: actions/checkout@v3
+      #   with:
+      #     ref: nx
+      #     path: nx
+
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v24
+        with:
+          nix_conf: |
+            build-users-group =
+            experimental-features = nix-command flakes
+
+      - name: Install Requred Packages
+        run:
+          nix-env -iA jq python39 -f https://github.com/NixOS/nixpkgs/archive/refs/tags/23.05.tar.gz
+
+      - name: Follow cFlake Version
+        run: |
+          nix flake metadata
+          nix flake info . --json | jq ".locks.nodes.nixpkgs.locked.rev" -r > nx_hash
+
+      # - name: Check Flake Version
+      #   id: check_version
+      #   run:
+
+      - name: Build Pkgs
+        run: |
+          nix build .#nx-direct-builder
+          python3 gen_nx.py
+          cp nx_hash ./out/
+
+      - name: Push to nx
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: out
+          branch: nx
+          clean: true
+          single-commit: true
+
