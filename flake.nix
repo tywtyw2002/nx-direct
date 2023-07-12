@@ -13,14 +13,15 @@
       forAllSystems = forEachSystem allSystems;
     in
     {
-       packages = forAllSystems (
+      packages = forAllSystems (
         system:
-          let
-            pkg = import nixpkgs {system = system;};
-          in
-          {
-            nx-direct-builder = pkg.callPackage ./pkg_gen.nix { inherit nixpkgs allSystems; };
-          }
+        let
+          pkg = import nixpkgs { system = system; };
+        in
+        {
+          nx-direct-builder = pkg.callPackage ./pkg_gen.nix { inherit nixpkgs allSystems; };
+        }
       );
+      legacyPackages = nixpkgs.legacyPackages;
     };
 }

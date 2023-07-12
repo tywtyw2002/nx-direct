@@ -1,3 +1,5 @@
 [jq]
 [dasel]
 [python39]
+[alejandra]
+[nixpkgs-fmt]

@@ -2,6 +2,9 @@ name: "Build NX Packages"
 on:
   repository_dispatch:
   workflow_dispatch:
+  push:
+    branches:
+      - master
 permissions:
   contents: write
 
@@ -10,12 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
-      # - name: Checkout NX Build
-      #   uses: actions/checkout@v3
-      #   with:
-      #     ref: nx
-      #     path: nx
 
       - name: Install Nix
         uses: nixbuild/nix-quick-install-action@v24
@@ -26,25 +23,31 @@ jobs:
 
       - name: Install Requred Packages
         run:
-          nix-env -iA jq python39 -f https://github.com/NixOS/nixpkgs/archive/refs/tags/23.05.tar.gz
+          # nix-env -iA jq python39 -f https://github.com/NixOS/nixpkgs/archive/refs/tags/23.05.tar.gz
+          nix-env -iA python39 jq -f https://github.com/tywtyw2002/nx-direct/tarball/nx
 
       - name: Follow cFlake Version
         run: |
-          nix flake metadata
-          nix flake info . --json | jq ".locks.nodes.nixpkgs.locked.rev" -r > nx_hash
+          nix flake metadata . --json | jq ".locks.nodes.nixpkgs.locked.rev" -r > nx_hash
+          git rev-parse --short HEAD >> nx_hash
 
-      # - name: Check Flake Version
-      #   id: check_version
-      #   run:
+      - name: Check Flake Version
+        id: check_version
+        run: |
+          curl -sL https://raw.githubusercontent.com/tywtyw2002/nx-direct/nx/nx_hash > release_hash
+          hashDiff=$(diff release_hash nx_hash &>/dev/null || echo "YES")
+          echo "NEED_BUILD=$hashDiff" >> $GITHUB_OUTPUT
 
       - name: Build Pkgs
+        if: ${{ steps.check_version.outputs.NEED_BUILD }}
         run: |
-          nix build .#nx-direct-builder
+          nix eval .#nx-direct-builder | jq "fromjson" > result
           python3 gen_nx.py
           cp nx_hash ./out/
 
       - name: Push to nx
         uses: JamesIves/github-pages-deploy-action@v4
+        if: ${{ steps.check_version.outputs.NEED_BUILD }}
         with:
           folder: out
           branch: nx
