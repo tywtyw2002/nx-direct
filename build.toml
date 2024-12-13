@@ -1,5 +1,6 @@
 [jq]
 [dasel]
 [python39]
+[python311]
 [alejandra]
 [nixpkgs-fmt]
